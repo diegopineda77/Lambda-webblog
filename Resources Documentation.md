@@ -1,14 +1,181 @@
+# Step by Step
+
+It will be necessary to configure the following components.
+
+| Type       | Name| Labels     |
+|--------------|-|-----------|
+| Table DynamoDB   | `BlogPosts` | ​​`project:webpost`, `env:test` |
+| IAM Policy   |  `BlogDynamoDBCrudPolicy` | ​​`project:webpost`    |
+| IAM Role    | `WebBlogLambdaCRUDRole`, `ApiGTWLogsCloudwatch` | ​​`project:webpost`     
+| Lambda | `BlogPosts` | ​​`project:webpost`   | |
+| Cognito   | `webpost` |  no label     |
+| API GTW   | `webpost` |   no label    |
+
+
+All resources, roles, and policies are tagged with the values ​​`project:webpost`.
+
+## DynamoDB Table
+In the AWS console, create a table with the following configuration:
+
+| Setting       | Value     |
+|---------------|-----------|
+| Table name    | `BlogPosts` |
+| Partition key | `post_id`   |
+| Key type      | String    |
+| Sort key      | None      |
+
+
+## IAM Roles and Policies
+
+### Lambda Role and Policies
+Create a new **policy** `BlogDynamoDBCrudPolicy` and add permissions to the table and resources, with minimal privileges for the region, and a specific account and resource. 
+
+> Note: The values ​​REGION and ACCOUNT_ID are placeholders; they must be replaced with values.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "BlogTableCrud",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:GetItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:Scan"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:<REGION>:<ACCOUNT_ID>:table/BlogPosts",     "arn:aws:dynamodb:<REGION>:<ACCOUNT_ID>:table/BlogPosts/index/*"
+      ]
+    }
+  ]
+}
+
+```
+
+Create a new **Role** `WebBlogLambdaCRUDRole` and add policies `BlogDynamoDBCrudPolicy` and `AWSLambdaBasicExecutionRole` that have the minimal access to cloudwatch to register logs.
+
+### Api Gateway Role and Policies
+
+Create a new **Role** `ApiGTWLogsCloudwatch` and add policy `AmazonAPIGatewayPushToCloudWatchLogs` to be able to record events in CloudWatch logs.
+
+
+
 ## Lambda Function
 
 Create a Lambda function using the `lambda_function.py` file, with `BlogPosts` name. Create a label `project:webpost`.
+Add the role `WebBlogLambdaCRUDRole` to Lambda Fuction `BlogPosts` in configuration/permissions.
+
+The Lambda execution role requires permissions for the `dynamodb:PutItem`, `dynamodb:GetItem`, `dynamodb:Scan`, and `dynamodb:UpdateItem` operations on that table. Restrict the permissions to the table's ARN, rather than granting general access to DynamoDB.
+
+Then, in the Lambda configuration, add this environment variable:
+`TABLE_NAME = BlogPosts`
+
+
+
+
+## Cognito configuration
+Create a user pool in Amazon Cognito named `webpost`, the `ALLOW_USER_PASSWORD_AUTH` option must be selected, and create a user to be used for authentication.
+
+
+## API Gateway Config.
+
+Create an HTTP API and connect its routes to the same Lambda function:
+
+| route                 | Integration |
+| -------------------- | ----------- |
+| `POST /posts`        | Lambda      |
+| `GET /posts`         | Lambda      |
+| `PUT /posts/{id}`    | Lambda      |
+| `PATCH /posts/{id}`  | Lambda      |
+| `DELETE /posts/{id}` | Lambda      |
+
+Configure the proxy integration so that Lambda receives the method, path, parameters, and body of each request. Associate with the Cognito pool (Cognito-webpost) and define `Authorization` like origin token.
+
+Under resources, link the authenticator; leave the request validator empty, and select the Lambda function configured with Lambda proxy integration.
+
+
+# Testing
+
+For first time to the new user if is necesary reset the password.
+
+Create a user in cognito for Testing. Validate the user password for first time 
+
+```Powershell
+aws cognito-idp initiate-auth --region REGION --client-id CLIENT_ID --auth-flow USER_PASSWORD_AUTH --auth-parameters "USERNAME=EMAIL,PASSWORD=PASSWORD_TEMPORAL"
+```
+for new password
+
+```powershell 
+aws cognito-idp respond-to-auth-challenge --region REGION --client-id CLIENT_ID --challenge-name NEW_PASSWORD_REQUIRED --challenge-responses "USERNAME=EMAIL,NEW_PASSWORD=NEW_PASSWORD" --session "SESSION_RETURNBY_COGNITO"
+```
+
+
+## Token request using CLI
+
+request to token
+
+```Bash
+aws cognito-idp initiate-auth \
+  --region <REGION> \
+  --client-id <CLIENT_ID> \
+  --auth-flow USER_PASSWORD_AUTH \
+  --auth-parameters USERNAME="user",PASSWORD="password"
+```
+Json response. IdToken need to be used in autorized post
+
+```json
+{
+  "AuthenticationResult": {
+    "AccessToken": "eyJ...",
+    "IdToken": "eyJ...",
+    "RefreshToken": "eyJ...",
+    "ExpiresIn": 3600,
+    "TokenType": "Bearer"
+  }
+}
+```
+
+## Token request using Postman
+
+**Header**
+|Key|	Value|
+|----|-------|
+|Content-Type	|application/x-amz-json-1.1|
+|X-Amz-Target	|AWSCognitoIdentityProviderService.InitiateAuth|
+
+**Body**
+
+``` json
+{
+  "AuthFlow": "USER_PASSWORD_AUTH",
+  "ClientId": "<CLIENT_ID>",
+  "AuthParameters": {
+    "USERNAME": "user",
+    "PASSWORD": "pass"
+  }
+}
+```
+
+replae the user and pass for the cognito user, and Client_ID for the aplication ID in cognito.
 
 ## Api Call
+
+Since authentication is being handled via Cognito, it is necessary to configure the header with a Bearer token and include the requested token.
+
+**Header**
+|Key|	Value|
+|----|-------|
+|Bearer Token	|"eyJ..."|
 
 ### Create Post
 
 `POST /posts`
 
-```
+```json
 {
   "httpMethod": "POST",
   "path": "/posts",
@@ -27,7 +194,7 @@ Create a Lambda function using the `lambda_function.py` file, with `BlogPosts` n
 ### Edit Post
 
 `PATCH /posts/8b15e8e2-6f2b-4f1c-a239-9ad2b3d61c4a`
-```
+```json
 {
   "httpMethod": "PUT",
   "path": "/posts/<ID>",
@@ -44,7 +211,7 @@ Create a Lambda function using the `lambda_function.py` file, with `BlogPosts` n
 
 ### Delete Post
 
-```
+```json
 {
   "httpMethod": "DELETE",
   "path": "/posts/<ID>",
@@ -71,7 +238,7 @@ Create a Lambda function using the `lambda_function.py` file, with `BlogPosts` n
 | by date range      | `GET /posts?startDate=2026-10-01&endDate=2026-10-31`   |
 | pagination           | `GET /posts?limit=20&nextToken=...`                    |
 
-```
+```json
 {
   "httpMethod": "GET",
   "path": "/posts",
@@ -81,76 +248,4 @@ Create a Lambda function using the `lambda_function.py` file, with `BlogPosts` n
 
 The query response includes `items`, `count`, and `nextToken`. If there are no more pages, `nextToken` will be `null`..
 
-## DynamoDB Table
-In the AWS console, create a table with the following configuration:
-
-| Setting       | Value     |
-|---------------|-----------|
-| Table name    | `BlogPosts` |
-| Partition key | `post_id`   |
-| Key type      | String    |
-| Sort key      | None      |
-
-Then, in the Lambda configuration, add this environment variable:
-
-`TABLE_NAME = BlogPosts`
-
-The Lambda execution role requires permissions for the `dynamodb:PutItem`, `dynamodb:GetItem`, `dynamodb:Scan`, and `dynamodb:UpdateItem` operations on that table. Restrict the permissions to the table's ARN, rather than granting general access to DynamoDB.
-
-## Security
-
-Create a new policy `BlogDynamoDBCrudPolicy` and add permissions to the table and resources, with minimal privileges for the region, and a specific account and resource. 
-
-> Note: The values ​​REGION and ACCOUNT_ID are placeholders; they must be replaced with values.
-
-```
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "BlogTableCrud",
-      "Effect": "Allow",
-      "Action": [
-        "dynamodb:PutItem",
-        "dynamodb:GetItem",
-        "dynamodb:UpdateItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:Query",
-        "dynamodb:Scan"
-      ],
-      "Resource": [
-        "arn:aws:dynamodb:<REGION>:<ACCOUNT_ID>:table/BlogPosts",     "arn:aws:dynamodb:<REGION>:<ACCOUNT_ID>:table/BlogPosts/index/*"
-      ]
-    }
-  ]
-}
-
-```
-
-Create a new Role `WebBlogLambdaCRUDRole` and add policies `BlogDynamoDBCrudPolicy` and `AWSLambdaBasicExecutionRole` that have the minimal access to cloudwatch to register logs.
-
-## API Gateway Config.
-
-Create an HTTP API and connect its routes to the same Lambda function:
-
-| route                 | Integration |
-| -------------------- | ----------- |
-| `POST /posts`        | Lambda      |
-| `GET /posts`         | Lambda      |
-| `PUT /posts/{id}`    | Lambda      |
-| `PATCH /posts/{id}`  | Lambda      |
-| `DELETE /posts/{id}` | Lambda      |
-
-Configure the proxy integration so that Lambda receives the method, path, parameters, and body of each request.
-
-## Labeled
-
-All resources, roles, and policies are tagged with the values ​​`project:webpost`.
-
-| Type       | Name| Labels     |
-|--------------|-|-----------|
-| Table DynamoDB   | `BlogPosts` | ​​`project:webpost`, `env:test` |
-| Lambda | `BlogPosts` | ​​`project:webpost`   |
-| IAM Policy   |  `BlogDynamoDBCrudPolicy` | ​​`project:webpost`    |
-| IAM Role    | `WebBlogLambdaCRUDRole` | ​​`project:webpost`      |
-| API GTW   |  | ​​`project:webpost`      |
+>Expected response: 200 OK, query OK.

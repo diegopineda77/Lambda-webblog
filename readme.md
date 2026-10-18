@@ -1,7 +1,7 @@
 # API Specifications for Blog Post Management
 
 ## Overview
-Development of a set of REST API endpoints is required to manage the full lifecycle of blog posts on the website. The goal of this project is to implement a serverless architecture and justify this decision. At the code level, there are certain areas for improvement that are not being addressed, given the focus on the implementation itself.
+Development of a set of REST API endpoints is required to manage the full lifecycle of blog posts on the website. The goal of this project is to implement a **serverless architecture** and justify this decision. At the code level, there are certain areas for improvement that are not being addressed, given the focus on the implementation itself.
 
 ## Required Endpoints
 
@@ -37,7 +37,7 @@ Development of a set of REST API endpoints is required to manage the full lifecy
 ![alt text](<AWS Serverless API Architecture.png>)
 
 ## Technologies
-Api GTW, Lambda, DynamoDB, Cognito, CloudWatch
+Api GTW, Lambda, DynamoDB, Cognito, CloudWatch, IAM (minimal privileges)
 
 ## Options Considered
 **Docker/ECS, Database: RDS**
@@ -53,12 +53,15 @@ Api GTW, Lambda, DynamoDB, Cognito, CloudWatch
 
 **DynamoDB:**
 
-**Api Gateway:**
+* DynamoDB is well-suited for your blog because its core operations are simple. It offers resilience—automatically replicating data across three Availability Zones within a region—and scalability, as it can handle significant fluctuations in request volume. It also provides high availability by minimizing the impact of failures, along with low latency.
 
-**Cognito:**
+**Api Gateway and Cognito:**
+* Allows for the association of a **Cognito** authorizer to reject unauthenticated requests before invoking Lambda.
+Includes controls such as throttling to limit the request rate.
+Publishes metrics on requests, errors, and latency, and can generate logs in **CloudWatch**.
 
 **CloudWatch:**
-
+* Collect logs and metrics to diagnose failures, measure performance, and detect operational issues.
 
 ## Consequences
 
@@ -66,17 +69,19 @@ Api GTW, Lambda, DynamoDB, Cognito, CloudWatch
 * Dependency on execution traffic; payment based on invocations and execution time.
 
 ## Challenges
-```
-seguridad (VPC)
-costo
-resiliencia
-Monitoreo
-networking
-Backups
-DRP
-```
+
+**Security:**
+Regarding security, roles based on the principle of least privilege were implemented for accessing resources such as DynamoDB, API Gateway, and Lambda. An API Gateway layer was incorporated to better manage request limits and prevent the direct exposure of internal servers. Furthermore, Cognito is used for user authentication via tokens, which helps avoid over-exposing user credentials; additionally, all communication is secured using SSL.
+
+**Serverless Architecture:** The entire architecture is serverless, which translates to a lower operational burden and greater resilience, agility, and availability.
+
+**Cost:** Keeping costs under control is always a challenge; however, this architecture offers low, consumption-based costs, which can be capped within API Gateway to avoid unexpected surprises.
+
+**Monitoring:** All monitoring is managed through CloudWatch controls, which helps identify errors or alerts and enables responses to them—even before a problem actually occurs.
+
+
 
 ## More documents
 See `Resources Documentation.md` for instructions on how to create the DynamoDB table, configure the API Gateway, and view examples of how to call the Lambda API.
 
-See `example.json` for the JSON structure.
+See `json_example.json` for the JSON structure.
