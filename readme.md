@@ -43,6 +43,8 @@ Api GTW, Lambda, DynamoDB, Cognito, CloudWatch, IAM (minimal privileges)
 **Docker/ECS, Database: RDS**
 * It makes it easier to move the application between container-compatible platforms.
 * Payment based on allocated resources while tasks are running. With high and stable traffic, a container service can be more cost-competitive.
+**Security**
+* WAF and Shield are not used for this initial phase.
 
 ## Decision
 
@@ -53,12 +55,12 @@ Api GTW, Lambda, DynamoDB, Cognito, CloudWatch, IAM (minimal privileges)
 
 **DynamoDB:**
 
-* DynamoDB is well-suited for your blog because its core operations are simple. It offers resilience—automatically replicating data across three Availability Zones within a region—and scalability, as it can handle significant fluctuations in request volume. It also provides high availability by minimizing the impact of failures, along with low latency.
+* DynamoDB offers resilience, automatically replicating data across three Availability Zones within a region, and scalability, as it can handle significant fluctuations in request volume. It also provides high availability by minimizing the impact of failures, along with low latency.
 
 **Api Gateway and Cognito:**
 * Allows for the association of a **Cognito** authorizer to reject unauthenticated requests before invoking Lambda.
 Includes controls such as throttling to limit the request rate.
-Publishes metrics on requests, errors, and latency, and can generate logs in **CloudWatch**.
+Publishes metrics on requests, errors, and latency, and can generate logs in **CloudWatch**. WAF and Shield are not used for this initial phase.
 
 **CloudWatch:**
 * Collect logs and metrics to diagnose failures, measure performance, and detect operational issues.
@@ -71,7 +73,7 @@ Publishes metrics on requests, errors, and latency, and can generate logs in **C
 ## Challenges
 
 **Security:**
-Regarding security, roles based on the principle of least privilege were implemented for accessing resources such as DynamoDB, API Gateway, and Lambda. An API Gateway layer was incorporated to better manage request limits and prevent the direct exposure of internal servers. Furthermore, Cognito is used for user authentication via tokens, which helps avoid over-exposing user credentials; additionally, all communication is secured using SSL.
+Regarding security, roles based on the principle of least privilege were implemented for accessing resources such as DynamoDB, API Gateway, and Lambda. An API Gateway layer was incorporated to better manage request limits and prevent the direct exposure of internal servers. Furthermore, Cognito is used for user authentication via tokens, which helps avoid over-exposing user credentials; additionally, all communication is secured using TLS.
 
 **Serverless Architecture:** The entire architecture is serverless, which translates to a lower operational burden and greater resilience, agility, and availability.
 
@@ -79,9 +81,16 @@ Regarding security, roles based on the principle of least privilege were impleme
 
 **Monitoring:** All monitoring is managed through CloudWatch controls, which helps identify errors or alerts and enables responses to them—even before a problem actually occurs.
 
+## Next Steps
+
+* Backup Plan with AWS Backup
+* Monitoring Plan for Lambda, Api Gateway, DynamoDB
+* Cost Estimate
 
 
 ## More documents
 See `Resources Documentation.md` for instructions on how to create the DynamoDB table, configure the API Gateway, and view examples of how to call the Lambda API.
 
 See `json_example.json` for the JSON structure.
+
+See `Cloudformation.yaml` to recreate the infraestructure using IaC.

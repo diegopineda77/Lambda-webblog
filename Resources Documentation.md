@@ -1,15 +1,16 @@
 # Step by Step
 
-It will be necessary to configure the following components.
+The steps taken to create the infrastructure that meets the requirements for the blog website are listed. It will be necessary to configure the following components.
 
-| Type       | Name| Labels     |
+| Type       | Name| Labels (tags)    |
 |--------------|-|-----------|
 | Table DynamoDB   | `BlogPosts` | ​​`project:webpost`, `env:test` |
 | IAM Policy   |  `BlogDynamoDBCrudPolicy` | ​​`project:webpost`    |
 | IAM Role    | `WebBlogLambdaCRUDRole`, `ApiGTWLogsCloudwatch` | ​​`project:webpost`     
 | Lambda | `BlogPosts` | ​​`project:webpost`   | |
 | Cognito   | `webpost` |  no label     |
-| API GTW   | `webpost` |   no label    |
+| API GTW   | `webpost` |   ​`project:webpost`   |
+| Cloudwatch   | Used for view metrics and logs |   no label   |
 
 
 All resources, roles, and policies are tagged with the values ​​`project:webpost`.
@@ -98,6 +99,19 @@ Configure the proxy integration so that Lambda receives the method, path, parame
 Under resources, link the authenticator; leave the request validator empty, and select the Lambda function configured with Lambda proxy integration.
 
 
+## Backup plan
+Although aspects related to backups are not explicitly specified for this project, it is recommended to define the **RPO** (Recovery Point Objective), **RTO** (Recovery Time Objective), and the **retention period** for these backups. At a minimum, it is advisable to design a basic daily backup plan with a 30-day retention period, using **AWS Backup**.
+
+
+## Monitoring
+Monitoring is performed using automated CloudWatch dashboards to track API Gateway, Lambda, and DynamoDB, with a focus on latencies, the number of API/Lambda calls, 500 and 400 errors, throttled requests, etc.
+
+| Resource                 | More focused metrics |
+| -------------------- | ----------- |
+| Api gateway      | SuccessfulRequestLatency, ConsumedReadCapacityUnits, ConsumedWriteCapacityUnits, UserErrors      |
+| Lambda | Invocations, Duration, Errors, Throttles  |
+| DynamoDB | SuccessfulRequestLatency, ThrottledRequests, UserErrors, ConsumedReadCapacityUnits, ConsumedWriteCapacityUnits, ReturnedItemCount   |
+
 # Testing
 
 For first time to the new user if is necesary reset the password.
@@ -116,7 +130,7 @@ aws cognito-idp respond-to-auth-challenge --region REGION --client-id CLIENT_ID 
 
 ## Token request using CLI
 
-request to token
+Request to token
 
 ```Bash
 aws cognito-idp initiate-auth \
@@ -193,7 +207,7 @@ Since authentication is being handled via Cognito, it is necessary to configure 
 
 ### Edit Post
 
-`PATCH /posts/8b15e8e2-6f2b-4f1c-a239-9ad2b3d61c4a`
+`PATCH /posts/{post-id}`
 ```json
 {
   "httpMethod": "PUT",
@@ -210,6 +224,8 @@ Since authentication is being handled via Cognito, it is necessary to configure 
 > Expected response: 200 OK, data updated.
 
 ### Delete Post
+
+`DELETE /posts/{post-id}`
 
 ```json
 {
