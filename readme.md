@@ -81,11 +81,18 @@ Regarding security, roles based on the principle of least privilege were impleme
 
 **Monitoring:** All monitoring is managed through CloudWatch controls, which helps identify errors or alerts and enables responses to them—even before a problem actually occurs.
 
-## Next Steps
+## Cost Estimate
 
-* Backup Plan with AWS Backup
-* Monitoring Plan for Lambda, Api Gateway, DynamoDB
-* Cost Estimate
+Approximate estimated costs using the AWS calculator. Values ​​calculated for 100,000 transactions per month.
+
+|Resource|Cost|Unit|Note |
+|--|--|--|--|
+|Api Gateway| 0.35 USD| Per  Month| 100 Thousands request units |
+|Cognito| 1.62 USD| Per  Month| Token validity: 60 minutes. 720 tokens per month.|
+|Lambda| 0.02 USD| Per  Month|100 Thousands request units|
+|DynamoDB| 2.73 USD| Per  Month| DynamoDB on-demand capacity 300K writes 700k reads , 10 GB Storage (Values ​​higher than those of the API transactions were calculated.)|
+|Cloudwatch| 0.50 USD| Per  Month| Metrics and logs|
+|<B>Total</B> | <B>5.22 USD</B>
 
 
 ## More documents

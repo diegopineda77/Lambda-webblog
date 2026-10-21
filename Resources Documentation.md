@@ -84,7 +84,7 @@ Create a user pool in Amazon Cognito named `webpost`, the `ALLOW_USER_PASSWORD_A
 
 ## API Gateway Config.
 
-Create an HTTP API and connect its routes to the same Lambda function:
+Create an HTTP API REST and connect its routes to the same Lambda function:
 
 | route                 | Integration |
 | -------------------- | ----------- |
@@ -126,7 +126,11 @@ for new password
 ```powershell 
 aws cognito-idp respond-to-auth-challenge --region REGION --client-id CLIENT_ID --challenge-name NEW_PASSWORD_REQUIRED --challenge-responses "USERNAME=EMAIL,NEW_PASSWORD=NEW_PASSWORD" --session "SESSION_RETURNBY_COGNITO"
 ```
+or just confirme the password (just for testing). Replace `us-east-2_userid`, `user`, `pass`, `region us-east-2`.
 
+```powershell
+aws cognito-idp admin-set-user-password   --user-pool-id us-east-2_userid   --username user   --password "pass"   --permanent   --region us-east-2
+```
 
 ## Token request using CLI
 
@@ -155,6 +159,8 @@ Json response. IdToken need to be used in autorized post
 
 ## Token request using Postman
 
+URL: `https://cognito-idp.<region>.amazonaws.com/`
+
 **Header**
 |Key|	Value|
 |----|-------|
@@ -179,6 +185,9 @@ replae the user and pass for the cognito user, and Client_ID for the aplication 
 ## Api Call
 
 Since authentication is being handled via Cognito, it is necessary to configure the header with a Bearer token and include the requested token.
+
+Copy the URL for testing the API Gateway stage invocation URL. ex:
+`https://x4xx1232.execute-api.us-east-2.amazonaws.com/dev`
 
 **Header**
 |Key|	Value|
